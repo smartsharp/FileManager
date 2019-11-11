@@ -1,16 +1,20 @@
 
 package com.filemanager.pros.free;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -31,21 +35,12 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.startapp.android.publish.Ad;
-import com.startapp.android.publish.AdDisplayListener;
-import com.startapp.android.publish.StartAppAd;
-import com.startapp.android.publish.StartAppSDK;
-import com.startapp.android.publish.banner.Banner;
-import com.startapp.android.publish.banner.BannerListener;
 
 import java.io.File;
 
 
 public final class Main extends ListActivity {
-
-	private StartAppAd startAppAd = new StartAppAd(this);
-	private Banner banner;
-	private boolean showAd = true;
+	private boolean showAd = false;
 
 	public static final String ACTION_WIDGET = "com.filemanager.Main.ACTION_WIDGET";
 	
@@ -78,10 +73,17 @@ public final class Main extends ListActivity {
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-		StartAppSDK.init(this, "201025739", true);
 
         getWindow().requestFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.main);
+
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+		!= PackageManager.PERMISSION_GRANTED){
+			ActivityCompat.requestPermissions(this, new String[]{
+					Manifest.permission.WRITE_EXTERNAL_STORAGE
+			},100);
+			return;
+		}
 
 		/*read settings*/
         mSettings = getSharedPreferences(PREFS_NAME, 0);
@@ -186,15 +188,6 @@ public final class Main extends ListActivity {
 
         }
 
-		banner = (com.startapp.android.publish.banner.Banner) findViewById(R.id.startAppBanner);
-
-		LinearLayout bannerLayout = (LinearLayout) findViewById(R.id.bannerLayout);
-		bannerLayout.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				banner.hideBanner();
-			}
-		});
 
 		_inst = this;
     }
@@ -205,7 +198,6 @@ public final class Main extends ListActivity {
 	@Override
 	public void onResume() {
 		super.onResume();
-		startAppAd.onResume();
 	}
 
 	/**
@@ -215,7 +207,6 @@ public final class Main extends ListActivity {
 	@Override
 	public void onPause() {
 		super.onPause();
-		startAppAd.onPause();
 	}
 
 	/**
@@ -224,7 +215,6 @@ public final class Main extends ListActivity {
 	 */
 	@Override
 	public void onBackPressed() {
-		startAppAd.onBackPressed();
 		super.onBackPressed();
 	}
 
@@ -249,51 +239,6 @@ public final class Main extends ListActivity {
 		finish();
 	}
 
-	public void showAd() {
-
-		if (!showAd) {
-			showAd = true;
-			return;
-		}
-
-		// Show an Ad
-		startAppAd.showAd(new AdDisplayListener() {
-
-			/**
-			 * Callback when Ad has been hidden
-			 * @param ad
-			 */
-			@Override
-			public void adHidden(Ad ad) {
-			}
-
-			/**
-			 * Callback when ad has been displayed
-			 * @param ad
-			 */
-			@Override
-			public void adDisplayed(Ad ad) {
-			}
-
-			/**
-			 * Callback when ad has been clicked
-			 * @param ad
-			 */
-			@Override
-			public void adClicked(Ad arg0) {
-			}
-
-			/**
-			 * Callback when ad not displayed
-			 * @param ad
-			 */
-			@Override
-			public void adNotDisplayed(Ad arg0) {
-			}
-		});
-
-		showAd = false;
-	}
 
 	public void updateView () {
 
@@ -306,7 +251,6 @@ public final class Main extends ListActivity {
 			gridView.setVisibility(View.VISIBLE);
 			listView.setVisibility(View.INVISIBLE);
 
-			showAd();
 
 		} else {
 			gridView.setVisibility(View.INVISIBLE);
@@ -833,6 +777,10 @@ public final class Main extends ListActivity {
      */
     @Override
    public boolean onKeyDown(int keycode, KeyEvent event) {
+		if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+				!= PackageManager.PERMISSION_GRANTED){
+			return super.onKeyDown(keycode, event);
+		}
     	String current = mFileMag.getCurrentDir();
     	
     	if(keycode == KeyEvent.KEYCODE_BACK && mUseBackKey && !current.equals("/")) {
